@@ -15,7 +15,6 @@ function strings(value: unknown): string[] | undefined {
 export function parseOpinion(value: unknown): Opinion | undefined {
 	if (!value || typeof value !== "object") return undefined;
 	const item = value as Record<string, unknown>;
-	if (!Object.keys(item).every((key) => ["recommendation", "evidence", "assumptions", "unknowns", "nonNegotiableConflict", "materialUnverifiedAssumption"].includes(key))) return undefined;
 	const evidence = strings(item.evidence), assumptions = strings(item.assumptions), unknowns = strings(item.unknowns);
 	if (typeof item.recommendation !== "string" || !evidence || !assumptions || !unknowns) return undefined;
 	if (item.nonNegotiableConflict !== undefined && typeof item.nonNegotiableConflict !== "boolean") return undefined;
@@ -26,7 +25,6 @@ export function parseOpinion(value: unknown): Opinion | undefined {
 function parseCritique(value: unknown): Critique | undefined {
 	if (!value || typeof value !== "object") return undefined;
 	const item = value as Record<string, unknown>;
-	if (!Object.keys(item).every((key) => ["critiques", "position", "unchanged"].includes(key))) return undefined;
 	const critiques = strings(item.critiques), position = parseOpinion(item.position);
 	if (!critiques || !position || (item.unchanged !== undefined && typeof item.unchanged !== "boolean")) return undefined;
 	return { critiques, position, unchanged: item.unchanged as boolean | undefined };
@@ -35,7 +33,6 @@ function parseCritique(value: unknown): Critique | undefined {
 function parseDecision(value: unknown): Decision | undefined {
 	if (!value || typeof value !== "object") return undefined;
 	const item = value as Record<string, unknown>;
-	if (!Object.keys(item).every((key) => ["recommendation", "rationale", "survivingDissent", "evidenceNeeded", "sharedUnverifiedAssumptions"].includes(key))) return undefined;
 	const survivingDissent = strings(item.survivingDissent), evidenceNeeded = strings(item.evidenceNeeded), sharedUnverifiedAssumptions = strings(item.sharedUnverifiedAssumptions);
 	if (typeof item.recommendation !== "string" || typeof item.rationale !== "string" || !survivingDissent || !evidenceNeeded || !sharedUnverifiedAssumptions) return undefined;
 	return { recommendation: item.recommendation, rationale: item.rationale, survivingDissent, evidenceNeeded, sharedUnverifiedAssumptions };

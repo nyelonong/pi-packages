@@ -1,6 +1,7 @@
 import type { CallFailure, CallResult, ProviderUsage } from "./types.ts";
 
 const OPENROUTER_ORIGIN = "https://openrouter.ai";
+const DEFAULT_TIMEOUT_MS = 180_000;
 
 export interface OpenRouterAuth {
 	apiKey?: string;
@@ -17,8 +18,21 @@ export interface ChatRequest<T> {
 	fetch?: typeof fetch;
 }
 
-function failure(kind: CallFailure["kind"], message: string): CallFailure {
-	return { ok: false, kind, message };
+function failure(kind: CallFailure["kind"], message: string, sample?: string): CallFailure {
+	return { ok: false, kind, message, sample };
+}
+
+function parseJson(content: string): unknown | undefined {
+	const fenced = content.match(/^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/i);
+	try {
+		return JSON.parse(fenced?.[1] ?? content);
+	} catch {
+		return undefined;
+	}
+}
+
+function sample(content: string): string {
+	return content.replace(/\s+/g, " ").slice(0, 500);
 }
 
 function endpoint(baseUrl?: string): string | undefined {
@@ -48,7 +62,7 @@ export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
 	if (!url) return failure("auth", "Pi resolved a non-OpenRouter provider origin.");
 	if (request.signal?.aborted) return failure("cancelled", "Council cancelled before request dispatch.");
 	const controller = new AbortController();
-	const timeoutMs = request.timeoutMs ?? 60_000;
+	const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 	const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
 	const abort = () => controller.abort("cancelled");
 	request.signal?.addEventListener("abort", abort, { once: true });
@@ -65,10 +79,10 @@ export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
 		const record = body as Record<string, unknown>;
 		const content = (record.choices as Array<{ message?: { content?: unknown } }> | undefined)?.[0]?.message?.content;
 		if (typeof content !== "string") return failure("malformed", "OpenRouter response has no text completion.");
-		let parsed: unknown;
-		try { parsed = JSON.parse(content); } catch { return failure("malformed", "Council model did not return valid JSON."); }
+		const parsed = parseJson(content);
+		if (parsed === undefined) return failure("malformed", "Council model did not return valid JSON.", sample(content));
 		const value = request.parse(parsed);
-		if (!value) return failure("malformed", "Council model did not follow the required JSON contract.");
+		if (!value) return failure("malformed", "Council model did not follow the required JSON contract.", sample(content));
 		const responseUsage = usage(record);
 		return { ok: true, model: typeof record.model === "string" ? record.model : request.model, cost: typeof record.cost === "number" ? record.cost : responseUsage?.cost, usage: responseUsage, value };
 	} catch (error) {

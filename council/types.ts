@@ -48,6 +48,7 @@ export interface CallFailure {
 	kind: "cancelled" | "timeout" | "provider" | "malformed" | "auth";
 	model?: string;
 	message: string;
+	sample?: string;
 }
 
 export type CallResult<T> = CallSuccess<T> | CallFailure;

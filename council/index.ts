@@ -16,11 +16,11 @@ function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: Counc
 	const failures = [
 		...ROLES.flatMap((role) => {
 			const value = result.firstRound[role];
-			return value && !value.ok ? [`first-round ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}`] : [];
+			return value && !value.ok ? [`first-round ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}${value.sample ? ` Sample: ${value.sample}` : ""}`] : [];
 		}),
 		...ROLES.flatMap((role) => {
 			const value = result.critiqueRound?.[role];
-			return value && !value.ok ? [`critique ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}`] : [];
+			return value && !value.ok ? [`critique ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}${value.sample ? ` Sample: ${value.sample}` : ""}`] : [];
 		}),
 	];
 	const resolved = ROLES.map((role) => `${role}: ${result.firstRound[role]?.ok ? result.firstRound[role]?.model : settings.roles[role]}`).join("\n");
@@ -61,7 +61,7 @@ async function configure(ctx: ExtensionCommandContext): Promise<void> {
 	ctx.ui.notify("Council settings saved with owner-only permissions.", "info");
 }
 
-async function executeCouncil(ctx: ExtensionCommandContext, job: CouncilJob, settings: CouncilSettings, question: string, conversation: string, auth: { apiKey?: string; baseUrl?: string } | undefined): Promise<void> {
+async function executeCouncil(pi: ExtensionAPI, ctx: ExtensionCommandContext, job: CouncilJob, settings: CouncilSettings, question: string, conversation: string, auth: { apiKey?: string; baseUrl?: string } | undefined): Promise<void> {
 	try {
 		setPhase(ctx, job, "creating context brief");
 		const context = await deriveContext({ settings, auth, question, conversation, signal: job.controller.signal });
@@ -78,7 +78,7 @@ async function executeCouncil(ctx: ExtensionCommandContext, job: CouncilJob, set
 			onPhase: (phase) => setPhase(ctx, job, phase),
 		});
 		const cost = result.cost === undefined || context.cost === undefined ? undefined : result.cost + context.cost;
-		ctx.ui.notify(display({ ...result, cost }, settings), result.synthesis.ok ? "info" : "warning");
+		pi.sendMessage({ customType: "council-result", content: display({ ...result, cost }, settings), display: true, details: { cost, critiqueRan: result.critiqueRan } });
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? `Council failed: ${error.message}` : "Council failed.", "error");
 	} finally {
@@ -87,7 +87,7 @@ async function executeCouncil(ctx: ExtensionCommandContext, job: CouncilJob, set
 	}
 }
 
-async function council(args: string, ctx: ExtensionCommandContext): Promise<void> {
+async function council(pi: ExtensionAPI, args: string, ctx: ExtensionCommandContext): Promise<void> {
 	if (ctx.mode !== "tui") { ctx.ui.notify("/council does not run in print, JSON, RPC, or headless mode.", "warning"); return; }
 	if (activeJob) { ctx.ui.notify(`A council is already running (${activeJob.phase}). Use /council-cancel to stop it.`, "warning"); return; }
 	const question = args.trim() || (await ctx.ui.input("One council question:"))?.trim();
@@ -99,7 +99,7 @@ async function council(args: string, ctx: ExtensionCommandContext): Promise<void
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
 	const job: CouncilJob = { controller: new AbortController(), phase: "starting" };
 	activeJob = job;
-	void executeCouncil(ctx, job, settings, question, conversation, authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined);
+	void executeCouncil(pi, ctx, job, settings, question, conversation, authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined);
 	ctx.ui.notify("Council started. You can continue working; use /council-status or /council-cancel.", "info");
 }
 
@@ -115,7 +115,7 @@ function cancel(ctx: ExtensionCommandContext): void {
 
 export default function registerCouncil(pi: ExtensionAPI): void {
 	pi.registerCommand("council-settings", { description: "Configure private OpenRouter council model roles", handler: async (_args, ctx) => configure(ctx) });
-	pi.registerCommand("council", { description: "Run a confirmed OpenRouter design council in the background", handler: async (args, ctx) => council(args, ctx) });
+	pi.registerCommand("council", { description: "Run a confirmed OpenRouter design council in the background", handler: async (args, ctx) => council(pi, args, ctx) });
 	pi.registerCommand("council-status", { description: "Show current council phase", handler: async (_args, ctx) => status(ctx) });
 	pi.registerCommand("council-cancel", { description: "Cancel the running council", handler: async (_args, ctx) => cancel(ctx) });
 }

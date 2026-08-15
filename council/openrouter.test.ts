@@ -24,7 +24,9 @@ test("chat rejects non-OpenRouter origins and cancellation without calling fetch
 	assert.equal((await chat({ auth: { apiKey: "x" }, model: "a/b", prompt: "x", signal: controller.signal, parse: () => ({}), fetch: async () => { throw new Error("must not fetch"); } })).kind, "cancelled");
 });
 
-test("chat exposes malformed model output", async () => {
-	const result = await chat({ auth: { apiKey: "x" }, model: "a/b", prompt: "x", parse: () => undefined, fetch: async () => response({ choices: [{ message: { content: "{}" } }] }) });
-	assert.deepEqual(result, { ok: false, kind: "malformed", message: "Council model did not follow the required JSON contract." });
+test("chat accepts fenced JSON and samples malformed output", async () => {
+	const fenced = await chat({ auth: { apiKey: "x" }, model: "a/b", prompt: "x", parse: (value) => value as { answer: string }, fetch: async () => response({ choices: [{ message: { content: "```json\n{\"answer\":\"yes\"}\n```" } }] }) });
+	assert.equal(fenced.ok, true);
+	const malformed = await chat({ auth: { apiKey: "x" }, model: "a/b", prompt: "x", parse: () => undefined, fetch: async () => response({ choices: [{ message: { content: "{}" } }] }) });
+	assert.deepEqual(malformed, { ok: false, kind: "malformed", message: "Council model did not follow the required JSON contract.", sample: "{}" });
 });
