@@ -67,18 +67,21 @@ export async function deriveContext(input: { settings: CouncilSettings; auth: Op
 	return chat({ auth: input.auth, model: input.settings.synthesis, prompt: `Create a concise, neutral brief for an independent design council. Include only decision-relevant facts and unresolved constraints from this Pi conversation. Do not invent facts. Return only JSON: {"brief":string}.\nQuestion: ${input.question}\nConversation:\n${input.conversation || "(No earlier conversation.)"}`, signal: input.signal, fetch: input.fetch, parse: parseContextBrief });
 }
 
-export interface RunCouncilInput { settings: CouncilSettings; auth: OpenRouterAuth | undefined; question: string; context: string; signal?: AbortSignal; fetch?: typeof fetch; }
+export interface RunCouncilInput { settings: CouncilSettings; auth: OpenRouterAuth | undefined; question: string; context: string; signal?: AbortSignal; fetch?: typeof fetch; onPhase?: (phase: "first round" | "critique round" | "synthesis") => void; }
 
 export async function runCouncil(input: RunCouncilInput): Promise<CouncilResult> {
+	input.onPhase?.("first round");
 	const firstEntries = await Promise.all(ROLES.map(async (role) => [role, await chat({ auth: input.auth, model: input.settings.roles[role], prompt: prompt(input.question, input.context, role), signal: input.signal, fetch: input.fetch, parse: parseOpinion })] as const));
 	const firstRound = Object.fromEntries(firstEntries) as Partial<Record<Role, CallResult<Opinion>>>;
 	const critiqueRan = critiqueRequired(firstRound);
 	let critiqueRound: Partial<Record<Role, CallResult<Critique>>> | undefined;
 	if (critiqueRan) {
+		input.onPhase?.("critique round");
 		const transcript = JSON.stringify(firstRound);
 		const entries = await Promise.all(ROLES.map(async (role) => [role, await chat({ auth: input.auth, model: input.settings.roles[role], prompt: `Critique the following first-round council outputs claim by claim as ${role}. Return only JSON: {"critiques":string[],"position":Opinion,"unchanged"?:boolean}.\n${transcript}`, signal: input.signal, fetch: input.fetch, parse: parseCritique })] as const));
 		critiqueRound = Object.fromEntries(entries) as Partial<Record<Role, CallResult<Critique>>>;
 	}
+	input.onPhase?.("synthesis");
 	const synthesis = await chat({ auth: input.auth, model: input.settings.synthesis, prompt: `Synthesize this council. Return only JSON: {"recommendation":string,"rationale":string,"survivingDissent":string[],"evidenceNeeded":string[],"sharedUnverifiedAssumptions":string[]}.\nFirst round: ${JSON.stringify(firstRound)}\nCritique round: ${JSON.stringify(critiqueRound ?? {})}`, signal: input.signal, fetch: input.fetch, parse: parseDecision });
 	return { firstRound, critiqueRound, synthesis, critiqueRan, cost: totalCost([...Object.values(firstRound), ...Object.values(critiqueRound ?? {}), synthesis]) };
 }

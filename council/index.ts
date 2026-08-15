@@ -5,6 +5,13 @@ import { conversationText } from "./conversation.ts";
 import { loadSettings, saveSettings } from "./settings.ts";
 import { ROLES, type CouncilSettings } from "./types.ts";
 
+interface CouncilJob {
+	controller: AbortController;
+	phase: string;
+}
+
+let activeJob: CouncilJob | undefined;
+
 function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: CouncilSettings): string {
 	const failures = [
 		...ROLES.flatMap((role) => {
@@ -29,6 +36,11 @@ function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: Counc
 	return ["Council completed", resolved, `Synthesis: ${synthesisModel}`, `Critique round: ${result.critiqueRan ? "ran" : "not needed"}`, `Failed calls: ${failures.length ? failures.join("\n") : "none"}`, `Provider-returned cost: ${result.cost === undefined ? "unavailable" : result.cost}`, synthesisText].join("\n\n");
 }
 
+function setPhase(ctx: ExtensionCommandContext, job: CouncilJob, phase: string): void {
+	job.phase = phase;
+	ctx.ui.setStatus("council", `Council: ${phase}. Use /council-cancel to stop.`);
+}
+
 async function configure(ctx: ExtensionCommandContext): Promise<void> {
 	if (ctx.mode !== "tui") { ctx.ui.notify("/council-settings is available only in TUI mode.", "warning"); return; }
 	const current = await loadSettings();
@@ -49,8 +61,35 @@ async function configure(ctx: ExtensionCommandContext): Promise<void> {
 	ctx.ui.notify("Council settings saved with owner-only permissions.", "info");
 }
 
+async function executeCouncil(ctx: ExtensionCommandContext, job: CouncilJob, settings: CouncilSettings, question: string, conversation: string, auth: { apiKey?: string; baseUrl?: string } | undefined): Promise<void> {
+	try {
+		setPhase(ctx, job, "creating context brief");
+		const context = await deriveContext({ settings, auth, question, conversation, signal: job.controller.signal });
+		if (!context.ok) {
+			ctx.ui.notify(`Council context brief failed (${context.kind}): ${context.message}`, "warning");
+			return;
+		}
+		const result = await runCouncil({
+			settings,
+			auth,
+			question,
+			context: context.value.brief,
+			signal: job.controller.signal,
+			onPhase: (phase) => setPhase(ctx, job, phase),
+		});
+		const cost = result.cost === undefined || context.cost === undefined ? undefined : result.cost + context.cost;
+		ctx.ui.notify(display({ ...result, cost }, settings), result.synthesis.ok ? "info" : "warning");
+	} catch (error) {
+		ctx.ui.notify(error instanceof Error ? `Council failed: ${error.message}` : "Council failed.", "error");
+	} finally {
+		if (activeJob === job) activeJob = undefined;
+		ctx.ui.setStatus("council", undefined);
+	}
+}
+
 async function council(args: string, ctx: ExtensionCommandContext): Promise<void> {
 	if (ctx.mode !== "tui") { ctx.ui.notify("/council does not run in print, JSON, RPC, or headless mode.", "warning"); return; }
+	if (activeJob) { ctx.ui.notify(`A council is already running (${activeJob.phase}). Use /council-cancel to stop it.`, "warning"); return; }
 	const question = args.trim() || (await ctx.ui.input("One council question:"))?.trim();
 	if (!question) return;
 	const conversation = conversationText(ctx.sessionManager.getEntries());
@@ -58,30 +97,25 @@ async function council(args: string, ctx: ExtensionCommandContext): Promise<void
 	const models = [...ROLES.map((role) => `${role}: ${settings.roles[role]}`), `synthesis: ${settings.synthesis}`].join("\n");
 	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first create a concise brief from this conversation. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
-	const controller = new AbortController();
-	const abort = () => controller.abort();
-	ctx.signal?.addEventListener("abort", abort, { once: true });
-	const unsubscribe = ctx.ui.onTerminalInput((data) => {
-		if (data === "\u001b" || data === "\u001b[" || data === "\u001b[ESC") controller.abort();
-		return undefined;
-	});
-	try {
-		const auth = authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined;
-		const context = await deriveContext({ settings, auth, question, conversation, signal: controller.signal });
-		if (!context.ok) {
-			ctx.ui.notify(`Council context brief failed (${context.kind}): ${context.message}`, "warning");
-			return;
-		}
-		const result = await runCouncil({ settings, auth, question, context: context.value.brief, signal: controller.signal });
-		const cost = result.cost === undefined || context.cost === undefined ? undefined : result.cost + context.cost;
-		ctx.ui.notify(display({ ...result, cost }, settings), result.synthesis.ok ? "info" : "warning");
-	} finally {
-		unsubscribe();
-		ctx.signal?.removeEventListener("abort", abort);
-	}
+	const job: CouncilJob = { controller: new AbortController(), phase: "starting" };
+	activeJob = job;
+	void executeCouncil(ctx, job, settings, question, conversation, authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined);
+	ctx.ui.notify("Council started. You can continue working; use /council-status or /council-cancel.", "info");
+}
+
+function status(ctx: ExtensionCommandContext): void {
+	ctx.ui.notify(activeJob ? `Council is running: ${activeJob.phase}. Use /council-cancel to stop it.` : "No council is running.", "info");
+}
+
+function cancel(ctx: ExtensionCommandContext): void {
+	if (!activeJob) { ctx.ui.notify("No council is running.", "info"); return; }
+	activeJob.controller.abort();
+	ctx.ui.notify("Council cancellation requested.", "info");
 }
 
 export default function registerCouncil(pi: ExtensionAPI): void {
 	pi.registerCommand("council-settings", { description: "Configure private OpenRouter council model roles", handler: async (_args, ctx) => configure(ctx) });
-	pi.registerCommand("council", { description: "Run a confirmed OpenRouter design council", handler: async (args, ctx) => council(args, ctx) });
+	pi.registerCommand("council", { description: "Run a confirmed OpenRouter design council in the background", handler: async (args, ctx) => council(args, ctx) });
+	pi.registerCommand("council-status", { description: "Show current council phase", handler: async (_args, ctx) => status(ctx) });
+	pi.registerCommand("council-cancel", { description: "Cancel the running council", handler: async (_args, ctx) => cancel(ctx) });
 }

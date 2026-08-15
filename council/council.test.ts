@@ -21,9 +21,10 @@ test("critique runs only for disagreement or explicit material triggers", () => 
 	assert.equal(critiqueRequired({ architect: opinion("use cache", { materialUnverifiedAssumption: true }) }), true);
 });
 
-test("council skips critique for agreement and sums only returned costs", async () => {
+test("council reports first round and synthesis phases", async () => {
+	const phases: string[] = [];
 	let calls = 0;
-	const result = await runCouncil({ settings: DEFAULT_SETTINGS, auth: { apiKey: "x" }, question: "Question?", context: "evidence", fetch: async (_url, init) => {
+	const result = await runCouncil({ settings: DEFAULT_SETTINGS, auth: { apiKey: "x" }, question: "Question?", context: "evidence", onPhase: (phase) => phases.push(phase), fetch: async (_url, init) => {
 		calls++;
 		const model = (JSON.parse(String(init?.body)) as { model: string }).model;
 		const content = calls <= 4 ? '{"recommendation":"ship","evidence":[],"assumptions":[],"unknowns":[]}' : '{"recommendation":"ship","rationale":"evidence","survivingDissent":[],"evidenceNeeded":[],"sharedUnverifiedAssumptions":[]}';
@@ -32,6 +33,7 @@ test("council skips critique for agreement and sums only returned costs", async 
 	assert.equal(calls, 5);
 	assert.equal(result.critiqueRan, false);
 	assert.equal(result.cost, 2.5);
+	assert.deepEqual(phases, ["first round", "synthesis"]);
 });
 
 test("council reports unavailable cost when a request has no returned cost", async () => {
