@@ -25,18 +25,21 @@ function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: Counc
 
 async function configure(ctx: ExtensionCommandContext): Promise<void> {
 	if (ctx.mode !== "tui") { ctx.ui.notify("/council-settings is available only in TUI mode.", "warning"); return; }
-	const models = ctx.modelRegistry.getAvailable().filter((model) => model.provider === "openrouter").map((model) => model.id);
-	if (!models.length) { ctx.ui.notify("No available OpenRouter models. Configure Pi OpenRouter authentication first.", "warning"); return; }
 	const current = await loadSettings();
 	const roles = { ...current.roles };
 	for (const role of ROLES) {
-		const selected = await ctx.ui.select(`Select ${role} model`, models);
+		const selected = await ctx.ui.input(`Enter ${role} OpenRouter model ID`, current.roles[role]);
 		if (!selected) return;
-		roles[role] = selected;
+		roles[role] = selected.trim();
 	}
-	const synthesis = await ctx.ui.select("Select synthesis model", models);
+	const synthesis = await ctx.ui.input("Enter synthesis OpenRouter model ID", current.synthesis);
 	if (!synthesis) return;
-	await saveSettings({ roles, synthesis });
+	try {
+		await saveSettings({ roles, synthesis: synthesis.trim() });
+	} catch (error) {
+		ctx.ui.notify(error instanceof Error ? error.message : "Council settings are invalid.", "warning");
+		return;
+	}
 	ctx.ui.notify("Council settings saved with owner-only permissions.", "info");
 }
 
