@@ -17,13 +17,14 @@ export interface Opinion {
 
 export interface Critique {
 	critiques: string[];
-	position: Opinion;
+	position?: Opinion;
 	unchanged?: boolean;
 }
 
 export interface Decision {
 	recommendation: string;
 	rationale: string;
+	quorum?: { recommendation: string; supporters: Role[]; dissenters: Role[] };
 	survivingDissent: string[];
 	evidenceNeeded: string[];
 	sharedUnverifiedAssumptions: string[];

@@ -5,9 +5,13 @@ import { conversationText } from "./conversation.ts";
 import { loadSettings, saveSettings } from "./settings.ts";
 import { ROLES, type CouncilSettings } from "./types.ts";
 
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
 interface CouncilJob {
 	controller: AbortController;
 	phase: string;
+	frame: number;
+	timer?: ReturnType<typeof setInterval>;
 }
 
 let activeJob: CouncilJob | undefined;
@@ -23,22 +27,36 @@ function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: Counc
 			return value && !value.ok ? [`critique ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}${value.sample ? ` Sample: ${value.sample}` : ""}`] : [];
 		}),
 	];
-	const resolved = ROLES.map((role) => `${role}: ${result.firstRound[role]?.ok ? result.firstRound[role]?.model : settings.roles[role]}`).join("\n");
+	const firstRound = ROLES.map((role) => {
+		const value = result.firstRound[role];
+		if (!value?.ok) return `### ${role}\nFailed: ${value?.message ?? "no response"}`;
+		return `### ${role} — ${value.model}\n**Position:** ${value.value.recommendation}\n**Evidence:**\n${value.value.evidence.map((item) => `- ${item}`).join("\n") || "- none"}\n**Assumptions:**\n${value.value.assumptions.map((item) => `- ${item}`).join("\n") || "- none"}\n**Unknowns:**\n${value.value.unknowns.map((item) => `- ${item}`).join("\n") || "- none"}`;
+	}).join("\n\n");
+	const critiques = result.critiqueRound ? ROLES.map((role) => {
+		const value = result.critiqueRound?.[role];
+		if (!value?.ok) return `### ${role}\nFailed: ${value?.message ?? "no response"}`;
+		return `### ${role}\n${value.value.critiques.map((item) => `- ${item}`).join("\n") || "- no critique"}${value.value.position ? `\n**Revised position:** ${value.value.position.recommendation}` : ""}`;
+	}).join("\n\n") : "No critique round.";
 	const synthesis = result.synthesis;
 	let synthesisText: string;
 	let synthesisModel = settings.synthesis;
 	if (synthesis.ok) {
 		synthesisModel = synthesis.model;
-		synthesisText = `Recommendation: ${synthesis.value.recommendation}\nRationale: ${synthesis.value.rationale}\nSurviving dissent: ${synthesis.value.survivingDissent.join("; ") || "none"}\nEvidence needed: ${synthesis.value.evidenceNeeded.join("; ") || "none"}\nShared unverified assumptions: ${synthesis.value.sharedUnverifiedAssumptions.join("; ") || "none"}`;
+		const quorum = synthesis.value.quorum ? `\n**Quorum:** ${synthesis.value.quorum.recommendation}\n- Supporters: ${synthesis.value.quorum.supporters.join(", ") || "none"}\n- Dissenters: ${synthesis.value.quorum.dissenters.join(", ") || "none"}` : "\n**Quorum:** not returned by synthesis.";
+		synthesisText = `**Recommendation:** ${synthesis.value.recommendation}\n\n**Rationale:** ${synthesis.value.rationale}${quorum}\n\n**Surviving dissent:**\n${synthesis.value.survivingDissent.map((item) => `- ${item}`).join("\n") || "- none"}\n\n**Evidence needed:**\n${synthesis.value.evidenceNeeded.map((item) => `- ${item}`).join("\n") || "- none"}\n\n**Shared unverified assumptions:**\n${synthesis.value.sharedUnverifiedAssumptions.map((item) => `- ${item}`).join("\n") || "- none"}`;
 	} else {
 		synthesisText = `Synthesis failed: ${synthesis.message}`;
 	}
-	return ["Council completed", resolved, `Synthesis: ${synthesisModel}`, `Critique round: ${result.critiqueRan ? "ran" : "not needed"}`, `Failed calls: ${failures.length ? failures.join("\n") : "none"}`, `Provider-returned cost: ${result.cost === undefined ? "unavailable" : result.cost}`, synthesisText].join("\n\n");
+	return ["# Council", `## First round\n${firstRound}`, `## Critique round\n${critiques}`, `## Failed calls\n${failures.length ? failures.map((failure) => `- ${failure}`).join("\n") : "None"}`, `## Provider cost\n${result.cost === undefined ? "Unavailable because one or more calls did not return cost." : result.cost}`, `## Synthesis — ${synthesisModel}\n${synthesisText}`].join("\n\n");
+}
+
+function renderStatus(ctx: ExtensionCommandContext, job: CouncilJob): void {
+	ctx.ui.setStatus("council", `${SPINNER[job.frame % SPINNER.length]} Council: ${job.phase}. Use /council-cancel to stop.`);
 }
 
 function setPhase(ctx: ExtensionCommandContext, job: CouncilJob, phase: string): void {
 	job.phase = phase;
-	ctx.ui.setStatus("council", `Council: ${phase}. Use /council-cancel to stop.`);
+	renderStatus(ctx, job);
 }
 
 async function configure(ctx: ExtensionCommandContext): Promise<void> {
@@ -82,6 +100,7 @@ async function executeCouncil(pi: ExtensionAPI, ctx: ExtensionCommandContext, jo
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? `Council failed: ${error.message}` : "Council failed.", "error");
 	} finally {
+		if (job.timer) clearInterval(job.timer);
 		if (activeJob === job) activeJob = undefined;
 		ctx.ui.setStatus("council", undefined);
 	}
@@ -97,8 +116,10 @@ async function council(pi: ExtensionAPI, args: string, ctx: ExtensionCommandCont
 	const models = [...ROLES.map((role) => `${role}: ${settings.roles[role]}`), `synthesis: ${settings.synthesis}`].join("\n");
 	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first create a concise brief from this conversation. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
-	const job: CouncilJob = { controller: new AbortController(), phase: "starting" };
+	const job: CouncilJob = { controller: new AbortController(), phase: "starting", frame: 0 };
 	activeJob = job;
+	renderStatus(ctx, job);
+	job.timer = setInterval(() => { job.frame++; renderStatus(ctx, job); }, 300);
 	void executeCouncil(pi, ctx, job, settings, question, conversation, authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined);
 	ctx.ui.notify("Council started. You can continue working; use /council-status or /council-cancel.", "info");
 }
