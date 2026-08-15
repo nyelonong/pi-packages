@@ -9,7 +9,7 @@ Use explore when the request has unresolved scope, behavior, trade-off, or archi
 
 Use synthesis when the requirements are already clear. Do not create clarification work merely to follow a process; draft the specification directly.
 
-Write the draft to `<workspace-root>/docs/specs/YYYY-MM-DD-<topic>.md`. The workspace root is the direct child of `~/Projects` containing the current working directory. Do not commit the draft.
+Write the draft to `<repository-root>/docs/specs/YYYY-MM-DD-<topic>.md`. Determine the repository root from the active project (for example, Git's top-level directory); if no repository root exists, use the current working directory. Do not commit the draft.
 
 A specification includes:
 
