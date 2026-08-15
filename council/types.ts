@@ -24,6 +24,7 @@ export interface Critique {
 export interface Decision {
 	recommendation: string;
 	rationale: string;
+	architectureDiagram?: string;
 	quorum?: { recommendation: string; supporters: Role[]; dissenters: Role[] };
 	survivingDissent: string[];
 	evidenceNeeded: string[];

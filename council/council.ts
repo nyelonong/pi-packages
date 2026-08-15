@@ -36,9 +36,10 @@ function parseDecision(value: unknown): Decision | undefined {
 	const item = value as Record<string, unknown>;
 	const survivingDissent = strings(item.survivingDissent), evidenceNeeded = strings(item.evidenceNeeded), sharedUnverifiedAssumptions = strings(item.sharedUnverifiedAssumptions);
 	const quorum = item.quorum as { recommendation?: unknown; supporters?: unknown; dissenters?: unknown } | undefined;
+	if (item.architectureDiagram !== undefined && typeof item.architectureDiagram !== "string") return undefined;
 	const roles = (value: unknown): Role[] | undefined => Array.isArray(value) && value.every((role) => typeof role === "string" && ROLES.includes(role as Role)) ? value as Role[] : undefined;
 	if (typeof item.recommendation !== "string" || typeof item.rationale !== "string" || !survivingDissent || !evidenceNeeded || !sharedUnverifiedAssumptions || (quorum && (typeof quorum.recommendation !== "string" || !roles(quorum.supporters) || !roles(quorum.dissenters)))) return undefined;
-	return { recommendation: item.recommendation, rationale: item.rationale, quorum: quorum ? { recommendation: quorum.recommendation as string, supporters: roles(quorum.supporters)!, dissenters: roles(quorum.dissenters)! } : undefined, survivingDissent, evidenceNeeded, sharedUnverifiedAssumptions };
+	return { recommendation: item.recommendation, rationale: item.rationale, architectureDiagram: item.architectureDiagram as string | undefined, quorum: quorum ? { recommendation: quorum.recommendation as string, supporters: roles(quorum.supporters)!, dissenters: roles(quorum.dissenters)! } : undefined, survivingDissent, evidenceNeeded, sharedUnverifiedAssumptions };
 }
 
 export function critiqueRequired(opinions: Partial<Record<Role, CallResult<Opinion>>>): boolean {
@@ -82,6 +83,6 @@ export async function runCouncil(input: RunCouncilInput): Promise<CouncilResult>
 		critiqueRound = Object.fromEntries(entries) as Partial<Record<Role, CallResult<Critique>>>;
 	}
 	input.onPhase?.("synthesis");
-	const synthesis = await chat({ auth: input.auth, model: input.settings.synthesis, prompt: `Synthesize this council. Keep the recommendation to three short sentences and every list to three concise bullets. Return only JSON: {"recommendation":string,"rationale":string,"quorum":{"recommendation":string,"supporters":["architect"|"skeptic"|"pragmatist"|"researcher"],"dissenters":["architect"|"skeptic"|"pragmatist"|"researcher"]},"survivingDissent":string[],"evidenceNeeded":string[],"sharedUnverifiedAssumptions":string[]}.\nFirst round: ${JSON.stringify(firstRound)}\nCritique round: ${JSON.stringify(critiqueRound ?? {})}`, signal: input.signal, fetch: input.fetch, parse: parseDecision });
+	const synthesis = await chat({ auth: input.auth, model: input.settings.synthesis, prompt: `Synthesize this council. Keep the recommendation to three short sentences and every list to three concise bullets. When an architecture description would otherwise be long, include a compact ASCII diagram. Return only JSON: {"recommendation":string,"rationale":string,"architectureDiagram"?:string,"quorum":{"recommendation":string,"supporters":["architect"|"skeptic"|"pragmatist"|"researcher"],"dissenters":["architect"|"skeptic"|"pragmatist"|"researcher"]},"survivingDissent":string[],"evidenceNeeded":string[],"sharedUnverifiedAssumptions":string[]}.\nFirst round: ${JSON.stringify(firstRound)}\nCritique round: ${JSON.stringify(critiqueRound ?? {})}`, signal: input.signal, fetch: input.fetch, parse: parseDecision });
 	return { firstRound, critiqueRound, synthesis, critiqueRan, cost: totalCost([...Object.values(firstRound), ...Object.values(critiqueRound ?? {}), synthesis]) };
 }
