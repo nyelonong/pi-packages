@@ -54,7 +54,7 @@ export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
 		const response = await (request.fetch ?? fetch)(url, {
 			method: "POST",
 			headers: { authorization: `Bearer ${request.auth.apiKey}`, "content-type": "application/json" },
-			body: JSON.stringify({ model: request.model, messages: [{ role: "user", content: request.prompt }], response_format: { type: "json_object" } }),
+			body: JSON.stringify({ model: request.model, messages: [{ role: "user", content: request.prompt }], reasoning: { effort: "high" }, response_format: { type: "json_object" } }),
 			signal: controller.signal,
 		});
 		if (!response.ok) return failure("provider", `OpenRouter request failed (${response.status}).`);

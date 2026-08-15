@@ -13,7 +13,9 @@ test("chat sends a model-specific OpenRouter request and preserves returned cost
 	assert.equal(result.ok, true);
 	if (result.ok) { assert.equal(result.model, "provider/model"); assert.equal(result.cost, 0.012); }
 	assert.equal(request?.url, "https://openrouter.ai/api/v1/chat/completions");
-	assert.match(await request!.text(), /vendor\/model/);
+	const body = JSON.parse(await request!.text());
+	assert.equal(body.model, "vendor/model");
+	assert.deepEqual(body.reasoning, { effort: "high" });
 });
 
 test("chat rejects non-OpenRouter origins and cancellation without calling fetch", async () => {

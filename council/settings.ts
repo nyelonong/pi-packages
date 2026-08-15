@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: CouncilSettings = {
 		pragmatist: "qwen/qwen3.8-max",
 		researcher: "google/gemini-3.7-flash",
 	},
-	synthesis: "anthropic/claude-fable-5",
+	synthesis: "x-ai/grok-4.6",
 };
 
 export function settingsPath(home = homedir()): string {
