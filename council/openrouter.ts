@@ -38,7 +38,8 @@ function usage(value: Record<string, unknown>): ProviderUsage | undefined {
 	const item = source as Record<string, unknown>;
 	const inputTokens = typeof item.prompt_tokens === "number" ? item.prompt_tokens : undefined;
 	const outputTokens = typeof item.completion_tokens === "number" ? item.completion_tokens : undefined;
-	return inputTokens === undefined && outputTokens === undefined ? undefined : { inputTokens, outputTokens };
+	const cost = typeof item.cost === "number" ? item.cost : undefined;
+	return inputTokens === undefined && outputTokens === undefined && cost === undefined ? undefined : { inputTokens, outputTokens, cost };
 }
 
 export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
@@ -47,7 +48,8 @@ export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
 	if (!url) return failure("auth", "Pi resolved a non-OpenRouter provider origin.");
 	if (request.signal?.aborted) return failure("cancelled", "Council cancelled before request dispatch.");
 	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort("timeout"), request.timeoutMs ?? 60_000);
+	const timeoutMs = request.timeoutMs ?? 60_000;
+	const timeout = setTimeout(() => controller.abort("timeout"), timeoutMs);
 	const abort = () => controller.abort("cancelled");
 	request.signal?.addEventListener("abort", abort, { once: true });
 	try {
@@ -67,9 +69,10 @@ export async function chat<T>(request: ChatRequest<T>): Promise<CallResult<T>> {
 		try { parsed = JSON.parse(content); } catch { return failure("malformed", "Council model did not return valid JSON."); }
 		const value = request.parse(parsed);
 		if (!value) return failure("malformed", "Council model did not follow the required JSON contract.");
-		return { ok: true, model: typeof record.model === "string" ? record.model : request.model, cost: typeof record.cost === "number" ? record.cost : undefined, usage: usage(record), value };
+		const responseUsage = usage(record);
+		return { ok: true, model: typeof record.model === "string" ? record.model : request.model, cost: typeof record.cost === "number" ? record.cost : responseUsage?.cost, usage: responseUsage, value };
 	} catch (error) {
-		if (controller.signal.aborted) return failure(request.signal?.aborted ? "cancelled" : "timeout", request.signal?.aborted ? "Council cancelled." : "OpenRouter request timed out.");
+		if (controller.signal.aborted) return failure(request.signal?.aborted ? "cancelled" : "timeout", request.signal?.aborted ? "Council cancelled." : `OpenRouter request timed out after ${timeoutMs / 1_000} seconds.`);
 		return failure("provider", error instanceof Error ? error.message : "OpenRouter request failed.");
 	} finally {
 		clearTimeout(timeout);

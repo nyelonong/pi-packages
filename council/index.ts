@@ -1,15 +1,21 @@
-import { readFile } from "node:fs/promises";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-import { runCouncil } from "./council.ts";
-import { buildContext } from "./context.ts";
+import { deriveContext, runCouncil } from "./council.ts";
+import { conversationText } from "./conversation.ts";
 import { loadSettings, saveSettings } from "./settings.ts";
 import { ROLES, type CouncilSettings } from "./types.ts";
 
-const MAX_CONTEXT_BYTES = 100_000;
-
 function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: CouncilSettings): string {
-	const failed = ROLES.filter((role) => !result.firstRound[role]?.ok);
+	const failures = [
+		...ROLES.flatMap((role) => {
+			const value = result.firstRound[role];
+			return value && !value.ok ? [`first-round ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}`] : [];
+		}),
+		...ROLES.flatMap((role) => {
+			const value = result.critiqueRound?.[role];
+			return value && !value.ok ? [`critique ${role} (${value.model ?? settings.roles[role]}): ${value.kind} — ${value.message}`] : [];
+		}),
+	];
 	const resolved = ROLES.map((role) => `${role}: ${result.firstRound[role]?.ok ? result.firstRound[role]?.model : settings.roles[role]}`).join("\n");
 	const synthesis = result.synthesis;
 	let synthesisText: string;
@@ -20,7 +26,7 @@ function display(result: Awaited<ReturnType<typeof runCouncil>>, settings: Counc
 	} else {
 		synthesisText = `Synthesis failed: ${synthesis.message}`;
 	}
-	return ["Council completed", resolved, `Synthesis: ${synthesisModel}`, `Critique round: ${result.critiqueRan ? "ran" : "not needed"}`, `Failed roles: ${failed.length ? failed.join(", ") : "none"}`, `Provider-returned cost: ${result.cost === undefined ? "unavailable" : result.cost}`, synthesisText].join("\n\n");
+	return ["Council completed", resolved, `Synthesis: ${synthesisModel}`, `Critique round: ${result.critiqueRan ? "ran" : "not needed"}`, `Failed calls: ${failures.length ? failures.join("\n") : "none"}`, `Provider-returned cost: ${result.cost === undefined ? "unavailable" : result.cost}`, synthesisText].join("\n\n");
 }
 
 async function configure(ctx: ExtensionCommandContext): Promise<void> {
@@ -45,20 +51,12 @@ async function configure(ctx: ExtensionCommandContext): Promise<void> {
 
 async function council(args: string, ctx: ExtensionCommandContext): Promise<void> {
 	if (ctx.mode !== "tui") { ctx.ui.notify("/council does not run in print, JSON, RPC, or headless mode.", "warning"); return; }
-	if (!ctx.isProjectTrusted()) { ctx.ui.notify("/council requires a trusted project before reading selected files.", "warning"); return; }
 	const question = args.trim() || (await ctx.ui.input("One council question:"))?.trim();
 	if (!question) return;
-	const text = await ctx.ui.editor("Explicit context (optional):");
-	if (text === undefined) return;
-	const pathsLine = await ctx.ui.input("Optional relative file paths (comma-separated):");
-	if (pathsLine === undefined) return;
-	let context: string;
-	try {
-		context = await buildContext({ cwd: ctx.cwd, text, paths: pathsLine.split(",").map((path) => path.trim()).filter(Boolean), maxBytes: MAX_CONTEXT_BYTES, readFile: (path) => readFile(path, "utf8") });
-	} catch (error) { ctx.ui.notify(error instanceof Error ? error.message : "Could not read selected context.", "warning"); return; }
+	const conversation = conversationText(ctx.sessionManager.getEntries());
 	const settings = await loadSettings();
 	const models = [...ROLES.map((role) => `${role}: ${settings.roles[role]}`), `synthesis: ${settings.synthesis}`].join("\n");
-	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nA second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
+	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first create a concise brief from this conversation. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
 	const controller = new AbortController();
 	const abort = () => controller.abort();
@@ -68,8 +66,15 @@ async function council(args: string, ctx: ExtensionCommandContext): Promise<void
 		return undefined;
 	});
 	try {
-		const result = await runCouncil({ settings, auth: authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined, question, context, signal: controller.signal });
-		ctx.ui.notify(display(result, settings), result.synthesis.ok ? "info" : "warning");
+		const auth = authResult ? { apiKey: authResult.auth.apiKey, baseUrl: authResult.auth.baseUrl } : undefined;
+		const context = await deriveContext({ settings, auth, question, conversation, signal: controller.signal });
+		if (!context.ok) {
+			ctx.ui.notify(`Council context brief failed (${context.kind}): ${context.message}`, "warning");
+			return;
+		}
+		const result = await runCouncil({ settings, auth, question, context: context.value.brief, signal: controller.signal });
+		const cost = result.cost === undefined || context.cost === undefined ? undefined : result.cost + context.cost;
+		ctx.ui.notify(display({ ...result, cost }, settings), result.synthesis.ok ? "info" : "warning");
 	} finally {
 		unsubscribe();
 		ctx.signal?.removeEventListener("abort", abort);

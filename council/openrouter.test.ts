@@ -8,7 +8,7 @@ test("chat sends a model-specific OpenRouter request and preserves returned cost
 	let request: Request | undefined;
 	const result = await chat({
 		auth: { apiKey: "resolved-by-pi", baseUrl: "https://openrouter.ai/api/v1" }, model: "vendor/model", prompt: "private prompt",
-		parse: (value) => value as { answer: string }, fetch: async (url, init) => { request = new Request(url, init); return response({ model: "provider/model", cost: 0.012, choices: [{ message: { content: '{"answer":"yes"}' } }] }); },
+		parse: (value) => value as { answer: string }, fetch: async (url, init) => { request = new Request(url, init); return response({ model: "provider/model", usage: { cost: 0.012 }, choices: [{ message: { content: '{"answer":"yes"}' } }] }); },
 	});
 	assert.equal(result.ok, true);
 	if (result.ok) { assert.equal(result.model, "provider/model"); assert.equal(result.cost, 0.012); }

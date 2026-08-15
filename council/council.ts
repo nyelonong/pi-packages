@@ -57,6 +57,16 @@ function totalCost(results: CallResult<unknown>[]): number | undefined {
 	return completed.every((result) => typeof result.cost === "number") ? completed.reduce((sum, result) => sum + (result.cost ?? 0), 0) : undefined;
 }
 
+export function parseContextBrief(value: unknown): { brief: string } | undefined {
+	if (!value || typeof value !== "object" || typeof (value as { brief?: unknown }).brief !== "string") return undefined;
+	const brief = (value as { brief: string }).brief.trim();
+	return brief ? { brief } : undefined;
+}
+
+export async function deriveContext(input: { settings: CouncilSettings; auth: OpenRouterAuth | undefined; question: string; conversation: string; signal?: AbortSignal; fetch?: typeof fetch }): Promise<CallResult<{ brief: string }>> {
+	return chat({ auth: input.auth, model: input.settings.synthesis, prompt: `Create a concise, neutral brief for an independent design council. Include only decision-relevant facts and unresolved constraints from this Pi conversation. Do not invent facts. Return only JSON: {"brief":string}.\nQuestion: ${input.question}\nConversation:\n${input.conversation || "(No earlier conversation.)"}`, signal: input.signal, fetch: input.fetch, parse: parseContextBrief });
+}
+
 export interface RunCouncilInput { settings: CouncilSettings; auth: OpenRouterAuth | undefined; question: string; context: string; signal?: AbortSignal; fetch?: typeof fetch; }
 
 export async function runCouncil(input: RunCouncilInput): Promise<CouncilResult> {

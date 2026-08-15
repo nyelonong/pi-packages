@@ -32,6 +32,7 @@ export interface Decision {
 export interface ProviderUsage {
 	inputTokens?: number;
 	outputTokens?: number;
+	cost?: number;
 }
 
 export interface CallSuccess<T> {
@@ -45,6 +46,7 @@ export interface CallSuccess<T> {
 export interface CallFailure {
 	ok: false;
 	kind: "cancelled" | "timeout" | "provider" | "malformed" | "auth";
+	model?: string;
 	message: string;
 }
 
