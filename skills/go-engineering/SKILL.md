@@ -12,6 +12,7 @@ Start from repository evidence: read `go.mod`, project instructions, nearby code
 - Prefer clear, idiomatic Go and the standard library.
 - Start with concrete types and explicit constructor wiring. Add a narrow interface at the consuming boundary only when substitution is real.
 - Keep exported APIs small. Treat them as compatibility commitments.
+- Comments explain non-obvious constraints or intent, not code mechanics. Prefer clear names and structure; document exported APIs when their contract is not obvious.
 - Add dependencies only when their value exceeds their maintenance, licensing, security, and transitive cost.
 - Do not add abstraction, concurrency, caching, or a framework without a concrete need.
 
