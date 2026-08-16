@@ -20,8 +20,9 @@ The workflow skills cover the normal engineering loop:
 - `shape` turns an idea into an approved specification.
 - `implement` chooses test-first work when the change needs protection.
 - `verify` gathers fresh evidence before claiming completion.
+- `go-engineering` provides a compact Go baseline for design, correctness, and validation.
 
-The package also includes skills for choosing the right Pi customization form, writing a useful README, and making Go calls to upstream services more resilient.
+The package also includes skills for choosing the right Pi customization form and making Go calls to upstream services more resilient.
 
 ### Useful shortcuts
 
