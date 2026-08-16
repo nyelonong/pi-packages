@@ -81,7 +81,7 @@ async function council(pi: ExtensionAPI, args: string, ctx: ExtensionCommandCont
 	const conversation = conversationText(ctx.sessionManager.getEntries());
 	const settings = await loadSettings();
 	const models = [...ROLES.map((role) => `${role}: ${settings.roles[role]}`), `synthesis: ${settings.synthesis}`].join("\n");
-	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first create a concise brief from this conversation. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
+	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first receive up to 12,000 characters of this conversation to create a concise brief. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
 	const job: CouncilJob = { controller: new AbortController(), phase: "starting", frame: 0 };
 	activeJob = job;

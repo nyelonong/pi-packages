@@ -1,0 +1,16 @@
+{
+  "name": "@nyelonong/pi-packages",
+  "version": "0.1.0",
+  "description": "Pi extensions, workflow skills, and prompt templates.",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": ["./ask-decision/index.ts", "./council/index.ts"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  }
+}
