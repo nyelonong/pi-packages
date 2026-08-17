@@ -9,7 +9,7 @@
     "typebox": "*"
   },
   "pi": {
-    "extensions": ["./ask-decision/index.ts", "./council/index.ts", "./personas/index.ts"],
+    "extensions": ["./ask-decision/index.ts", "./council/index.ts", "./personas/index.ts", "./pet/index.ts"],
     "skills": ["./skills"],
     "prompts": ["./prompts"]
   }
