@@ -21,6 +21,8 @@ The workflow skills cover the normal engineering loop:
 - `implement` chooses test-first work when the change needs protection.
 - `verify` gathers fresh evidence before claiming completion.
 - `go-engineering` provides a compact Go baseline for design, correctness, and validation.
+- `route` picks the least process that covers a request, from a straight answer to the full loop.
+- `domain-language` keeps the project's shared vocabulary in a one-line-per-term CONTEXT.md.
 
 The package also includes skills for choosing the right Pi customization form and making Go calls to upstream services more resilient.
 
