@@ -1,12 +1,6 @@
 import { chat, type OpenRouterAuth } from "./openrouter.ts";
+import { PERSONAS } from "../shared/personas.ts";
 import { ROLES, type CallResult, type CouncilResult, type Critique, type Decision, type Opinion, type Role, type CouncilSettings } from "./types.ts";
-
-const ROLE_DETAILS: Record<Role, { lens: string; bias: string }> = {
-	architect: { lens: "Long-term structure, coupling, and reversibility.", bias: "Over-generalizes." },
-	skeptic: { lens: "Failure modes, unsupported assumptions, and counterexamples.", bias: "Risk-averse." },
-	pragmatist: { lens: "Smallest maintainable delivery and operational cost.", bias: "Under-invests in structure." },
-	researcher: { lens: "Evidence and prior art.", bias: "Supplies facts without committing." },
-};
 
 function strings(value: unknown): string[] | undefined {
 	return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : undefined;
@@ -48,8 +42,9 @@ export function critiqueRequired(opinions: Partial<Record<Role, CallResult<Opini
 }
 
 function prompt(question: string, context: string, role: Role): string {
-	const detail = ROLE_DETAILS[role];
-	return `Answer one council question as the ${role}. Lens: ${detail.lens} Bias to correct for: ${detail.bias}\nQuestion: ${question}\nExplicit evidence:\n${context || "(none)"}\nReturn only JSON: {"recommendation":string,"evidence":string[],"assumptions":string[],"unknowns":string[],"nonNegotiableConflict"?:boolean,"materialUnverifiedAssumption"?:boolean}.`;
+	const persona = PERSONAS.find((candidate) => candidate.name === role);
+	if (persona === undefined) throw new Error(`unknown persona: ${role}`);
+	return `Answer one council question as the ${role}. Lens: ${persona.lens} Bias to correct for: ${persona.bias}\nQuestion: ${question}\nExplicit evidence:\n${context || "(none)"}\nReturn only JSON: {"recommendation":string,"evidence":string[],"assumptions":string[],"unknowns":string[],"nonNegotiableConflict"?:boolean,"materialUnverifiedAssumption"?:boolean}.`;
 }
 
 function totalCost(results: CallResult<unknown>[]): number | undefined {

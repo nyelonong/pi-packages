@@ -17,7 +17,6 @@ It includes two extensions, practical workflow skills, and a few prompt shortcut
 The workflow skills cover the normal engineering loop:
 
 - `investigate` finds the cause before proposing a fix.
-- `research` answers a question from primary sources with each claim cited.
 - `shape` turns an idea into an approved specification.
 - `implement` chooses test-first work when the change needs protection.
 - `review` checks completed work against the spec first, then quality, before it is claimed done.
@@ -36,6 +35,7 @@ The package also includes skills for choosing the right Pi customization form an
 - `/task-boundary [context]` resets the task after scope or branch changes.
 - `/retry` retries a confirmed read-only transient failure once.
 - `/repo-fit <owner/repo> [criteria]` helps evaluate an open-source repository before adoption.
+- `/research <question>` answers a fact question from cited primary sources.
 
 ## Install
 

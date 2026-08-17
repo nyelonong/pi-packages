@@ -1,5 +1,4 @@
-export const ROLES = ["architect", "skeptic", "pragmatist", "researcher"] as const;
-export type Role = (typeof ROLES)[number];
+export { ROLES, type Role } from "../shared/personas.ts";
 
 export interface CouncilSettings {
 	roles: Record<Role, string>;
