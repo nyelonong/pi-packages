@@ -40,7 +40,10 @@ export function validateSettings(value: unknown): CouncilSettings {
 
 export async function loadSettings(path = settingsPath()): Promise<CouncilSettings> {
 	try {
-		return validateSettings(JSON.parse(await readFile(path, "utf8")));
+		const parsed = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+		const saved = parsed.roles && typeof parsed.roles === "object" ? (parsed.roles as Record<string, unknown>) : {};
+		const roles = { ...DEFAULT_SETTINGS.roles, ...saved };
+		return validateSettings({ roles, synthesis: parsed.synthesis });
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return DEFAULT_SETTINGS;
 		throw error;
