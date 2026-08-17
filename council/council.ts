@@ -1,5 +1,5 @@
 import { chat, type OpenRouterAuth } from "./openrouter.ts";
-import { PERSONAS } from "../shared/personas.ts";
+import { PERSONAS } from "../personas/personas.ts";
 import { ROLES, type CallResult, type CouncilResult, type Critique, type Decision, type Opinion, type Role, type CouncilSettings } from "./types.ts";
 
 function strings(value: unknown): string[] | undefined {

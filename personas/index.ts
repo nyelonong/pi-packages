@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
-import { PERSONAS } from "../shared/personas.ts";
+import { PERSONAS } from "./personas.ts";
 
 export default function (pi: ExtensionAPI): void {
 	pi.registerTool({

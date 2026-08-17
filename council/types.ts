@@ -1,4 +1,4 @@
-export { ROLES, type Role } from "../shared/personas.ts";
+export { ROLES, type Role } from "../personas/personas.ts";
 
 export interface CouncilSettings {
 	roles: Record<Role, string>;
