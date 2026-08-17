@@ -59,9 +59,3 @@ export async function saveSettings(settings: CouncilSettings, path = settingsPat
 	await rename(temporary, path);
 	await chmod(path, 0o600);
 }
-
-// The user persona runs as the session's active model unless configured explicitly; equality with the default marks "not configured".
-export function resolveUserModel(settings: CouncilSettings, activeModelId: string | undefined): CouncilSettings {
-	if (activeModelId === undefined || settings.roles.user !== DEFAULT_SETTINGS.roles.user) return settings;
-	return { ...settings, roles: { ...settings.roles, user: activeModelId } };
-}
