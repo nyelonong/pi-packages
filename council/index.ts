@@ -5,7 +5,6 @@ import { conversationText } from "./conversation.ts";
 import { formatCouncil } from "./report.ts";
 import { loadSettings, saveSettings } from "./settings.ts";
 import { ROLES, type CouncilSettings } from "./types.ts";
-import { PERSONAS } from "../shared/personas.ts";
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
@@ -103,18 +102,6 @@ function cancel(ctx: ExtensionCommandContext): void {
 }
 
 export default function registerCouncil(pi: ExtensionAPI): void {
-	pi.registerTool({
-		name: "personas",
-		label: "Personas",
-		description: "Load the persona catalog: architect, skeptic, pragmatist, and researcher, each with the lens to apply and the bias to correct for.",
-		parameters: Type.Object({}, { additionalProperties: false }),
-		async execute() {
-			return {
-				content: [{ type: "text", text: PERSONAS.map((persona) => `${persona.name}: ${persona.lens} Bias to correct: ${persona.bias}`).join("\n") }],
-				details: {},
-			};
-		},
-	});
 	pi.registerCommand("council-settings", { description: "Configure private OpenRouter council model roles", handler: async (_args, ctx) => configure(ctx) });
 	pi.registerCommand("council", { description: "Run a confirmed OpenRouter design council in the background", handler: async (args, ctx) => council(pi, args, ctx) });
 	pi.registerCommand("council-status", { description: "Show current council phase", handler: async (_args, ctx) => status(ctx) });
