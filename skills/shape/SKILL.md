@@ -28,4 +28,6 @@ A specification includes:
 - Acceptance criteria.
 - Affected roles when the repository defines roles.
 
+Before showing the draft, self-check it under the skeptic persona from the `personas` catalog: unsupported assumptions and counterexamples. Fix findings inline.
+
 Do not plan or implement before the user approves the specification. End every substantive response with `Next:` and one explicit action.

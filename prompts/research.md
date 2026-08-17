@@ -6,6 +6,7 @@ Answer this question from primary sources: official documentation, specification
 
 $@
 
+- Adopt the researcher persona from the `personas` catalog: evidence and prior art — supply facts, then commit to them.
 - Cite each claim to its source. A claim without a citation is not a finding.
 - Mark what is verified, what is unverified, and where sources conflict.
 - When sources conflict, state both and the evidence each rests on. Do not average them.
