@@ -1,6 +1,6 @@
 ---
 name: route
-description: Pick the destination skill for a substantive request: answer, investigate, shape, plan, implement, verify, go-engineering, go-network-resiliency, domain-language, or creation-router. Use before acting on any request that changes a repo or asks for design, debugging, planning, or verification.
+description: Pick the destination skill for a substantive request: answer, investigate, shape, plan, implement, review, verify, go-engineering, go-network-resiliency, domain-language, or creation-router. Use before acting on any request that changes a repo or asks for design, debugging, planning, or verification.
 ---
 
 # Route
@@ -15,6 +15,7 @@ Before acting on a substantive request, pick the destination from the table. Tri
 | Bug, flaky behavior, unexpected result | investigate |
 | Completion claim — "done", "tests pass", "fixed" | verify |
 | Feature or change, requirements already clear | implement |
+| Completed change, before a completion claim or merge | review |
 | Feature, requirements fuzzy or a position to stress-test | shape |
 | Approved spec spanning more than one logical change | plan |
 | Any Go code change | go-engineering |

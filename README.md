@@ -19,6 +19,7 @@ The workflow skills cover the normal engineering loop:
 - `investigate` finds the cause before proposing a fix.
 - `shape` turns an idea into an approved specification.
 - `implement` chooses test-first work when the change needs protection.
+- `review` checks completed work against the spec first, then quality, before it is claimed done.
 - `verify` gathers fresh evidence before claiming completion.
 - `go-engineering` provides a compact Go baseline for design, correctness, and validation.
 - `route` picks the least process that covers a request, from a straight answer to the full loop.
