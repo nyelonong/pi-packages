@@ -11,8 +11,6 @@ const spritesheetUrls = [
 	"https://codex-pets.net/assets/pets/v/1786493955099/ruby/spritesheet.webp",
 	"https://codex-pets.net/assets/pets/v/1786604307720/zhima/spritesheet.webp",
 	"https://codex-pets.net/assets/pets/v/1786620371742/mihua/spritesheet.webp",
-	"https://codex-pets.net/assets/pets/v/1786296002561/diego/spritesheet.webp",
-	"https://codex-pets.net/assets/pets/v/1786253832391/loki-cat/spritesheet.webp",
 	"https://codex-pets.net/assets/pets/v/1785896723518/old-bai/spritesheet.webp",
 	"https://codex-pets.net/assets/pets/v/1783674633973/xiaomai/spritesheet.webp",
 	"https://codex-pets.net/assets/pets/v/1784778029191/gan-zai/spritesheet.webp",
