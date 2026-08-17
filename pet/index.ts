@@ -23,19 +23,22 @@ export default function petExtension(pi: ExtensionAPI) {
 	let pet: ChildProcessWithoutNullStreams | undefined;
 	let assets: CachedPet | undefined;
 	let starting: Promise<void> | undefined;
+	let closed = false;
 	const pendingHumanTools = new Set<string>();
 
 	function send(command: "WORK" | "WAITING" | "SUCCESS" | "FAILED" | "CLOSE") {
 		if (!pet || pet.killed || pet.stdin.destroyed || !pet.stdin.writable) return;
 		pet.stdin.write(`${command}\n`, () => {});
 	}
-	function close() { send("CLOSE"); pet?.kill(); pet = undefined; pendingHumanTools.clear(); if (assets) void new Promise<void>((resolve) => rm(assets.reservationPath, { recursive: true, force: true }, () => resolve())); }
+	function releaseAssets() { if (assets) void new Promise<void>((resolve) => rm(assets.reservationPath, { recursive: true, force: true }, () => resolve())); }
+	function close() { closed = true; send("CLOSE"); pet?.kill(); pet = undefined; pendingHumanTools.clear(); releaseAssets(); }
 	async function start(ctx: ExtensionContext) {
 		if (pet || starting || process.platform !== "darwin") return;
 		starting = (async () => {
 			try {
 				assets ??= await ensurePetPackage({ cacheDir });
 				if (!buildPet()) throw new Error("could not compile the native pet overlay");
+				if (closed) { releaseAssets(); return; }
 				const file = basename(ctx.sessionManager.getSessionFile() ?? "");
 				const shortId = file.split("_")[1]?.slice(0, 6);
 				const session = pi.getSessionName() ?? [basename(ctx.cwd), shortId].filter(Boolean).join(" · ");
@@ -53,6 +56,6 @@ export default function petExtension(pi: ExtensionAPI) {
 	pi.on("agent_start", (_event, ctx) => { pendingHumanTools.clear(); void start(ctx); send("WORK"); });
 	pi.on("tool_execution_start", (event) => { if (needsHuman(event.toolName)) { pendingHumanTools.add(event.toolCallId); send("WAITING"); } });
 	pi.on("tool_execution_end", (event) => { if (needsHuman(event.toolName)) { pendingHumanTools.delete(event.toolCallId); if (pendingHumanTools.size === 0) send("WORK"); } if (event.isError) send("FAILED"); });
-	pi.on("agent_settled", () => { if (pendingHumanTools.size === 0) { send("SUCCESS"); setTimeout(close, 700).unref?.(); } });
+	pi.on("agent_settled", () => { if (pendingHumanTools.size === 0) send("SUCCESS"); });
 	pi.on("session_shutdown", () => close());
 }
