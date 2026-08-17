@@ -10,7 +10,7 @@ Review the change against the spec before quality: a change that reads well but 
 Check the spec's acceptance criteria first, then quality:
 
 - Spec: every acceptance criterion is met or explicitly waived. Findings cite the criterion.
-- Quality: the change follows the repository's own standards, the same bar `implement` applies. Findings cite the rule.
+- Quality: the change follows the repository's own standards, the same bar `implement` applies. Findings cite the rule. Run the quality pass under the skeptic persona from the `personas` catalog.
 
 Label findings by severity:
 
