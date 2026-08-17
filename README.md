@@ -17,6 +17,7 @@ It includes two extensions, practical workflow skills, and a few prompt shortcut
 The workflow skills cover the normal engineering loop:
 
 - `investigate` finds the cause before proposing a fix.
+- `research` answers a question from primary sources with each claim cited.
 - `shape` turns an idea into an approved specification.
 - `implement` chooses test-first work when the change needs protection.
 - `review` checks completed work against the spec first, then quality, before it is claimed done.
@@ -25,6 +26,7 @@ The workflow skills cover the normal engineering loop:
 - `route` picks the least process that covers a request, from a straight answer to the full loop.
 - `domain-language` keeps the project's shared vocabulary in a one-line-per-term CONTEXT.md.
 - `plan` decomposes an approved spec into ordered, testable tasks that survive a session break.
+- `finish` runs the full gate on the integrated result and hands the merge decision to you.
 
 The package also includes skills for choosing the right Pi customization form and making Go calls to upstream services more resilient.
 
