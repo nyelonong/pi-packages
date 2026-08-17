@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: CouncilSettings = {
 		skeptic: "openai/gpt-5.6-sol",
 		pragmatist: "qwen/qwen3.8-max",
 		researcher: "google/gemini-3.7-flash",
+		user: "anthropic/claude-sonnet-4",
 	},
 	synthesis: "x-ai/grok-4.6",
 };

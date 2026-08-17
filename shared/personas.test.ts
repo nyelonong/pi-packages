@@ -12,7 +12,7 @@ test("personas have unique names and non-blank lens and bias", () => {
 });
 
 test("ROLES lists the persona names in order", () => {
-	assert.deepEqual(ROLES, PERSONAS.map((persona) => persona.name));
+	assert.deepEqual(PERSONAS.map((persona) => persona.name), ["architect", "skeptic", "pragmatist", "researcher", "user"]);
 	for (const role of ROLES) {
 		assert.ok(PERSONAS.some((persona) => persona.name === role));
 	}

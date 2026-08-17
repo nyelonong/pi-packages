@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { critiqueRequired, deriveContext, runCouncil } from "./council.ts";
 import { DEFAULT_SETTINGS } from "./settings.ts";
+import { ROLES } from "./types.ts";
 import type { CallResult, Opinion } from "./types.ts";
 
 const opinion = (recommendation: string, flags = {}): CallResult<Opinion> => ({ ok: true, model: "m", cost: 1, value: { recommendation, evidence: [], assumptions: [], unknowns: [], ...flags } });
@@ -27,12 +28,12 @@ test("council reports first round and synthesis phases", async () => {
 	const result = await runCouncil({ settings: DEFAULT_SETTINGS, auth: { apiKey: "x" }, question: "Question?", context: "evidence", onPhase: (phase) => phases.push(phase), fetch: async (_url, init) => {
 		calls++;
 		const model = (JSON.parse(String(init?.body)) as { model: string }).model;
-		const content = calls <= 4 ? '{"recommendation":"ship","evidence":[],"assumptions":[],"unknowns":[]}' : '{"recommendation":"ship","rationale":"evidence","survivingDissent":[],"evidenceNeeded":[],"sharedUnverifiedAssumptions":[]}';
+		const content = calls <= ROLES.length ? '{"recommendation":"ship","evidence":[],"assumptions":[],"unknowns":[]}' : '{"recommendation":"ship","rationale":"evidence","survivingDissent":[],"evidenceNeeded":[],"sharedUnverifiedAssumptions":[]}';
 		return new Response(JSON.stringify({ model, cost: 0.5, choices: [{ message: { content } }] }));
 	} });
-	assert.equal(calls, 5);
+	assert.equal(calls, ROLES.length + 1);
 	assert.equal(result.critiqueRan, false);
-	assert.equal(result.cost, 2.5);
+	assert.equal(result.cost, (ROLES.length + 1) * 0.5);
 	assert.deepEqual(phases, ["first round", "synthesis"]);
 });
 
@@ -41,7 +42,7 @@ test("council reports unavailable cost when a request has no returned cost", asy
 	const result = await runCouncil({ settings: DEFAULT_SETTINGS, auth: { apiKey: "x" }, question: "Question?", context: "evidence", fetch: async (_url, init) => {
 		calls++;
 		const model = (JSON.parse(String(init?.body)) as { model: string }).model;
-		const content = calls <= 4 ? '{"recommendation":"ship","evidence":[],"assumptions":[],"unknowns":[]}' : '{"recommendation":"ship","rationale":"evidence","survivingDissent":[],"evidenceNeeded":[],"sharedUnverifiedAssumptions":[]}';
+		const content = calls <= ROLES.length ? '{"recommendation":"ship","evidence":[],"assumptions":[],"unknowns":[]}' : '{"recommendation":"ship","rationale":"evidence","survivingDissent":[],"evidenceNeeded":[],"sharedUnverifiedAssumptions":[]}';
 		return new Response(JSON.stringify({ model, ...(calls === 2 ? {} : { cost: 0.5 }), choices: [{ message: { content } }] }));
 	} });
 	assert.equal(result.cost, undefined);
