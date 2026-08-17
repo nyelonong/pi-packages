@@ -44,7 +44,7 @@ export function critiqueRequired(opinions: Partial<Record<Role, CallResult<Opini
 function prompt(question: string, context: string, role: Role): string {
 	const persona = PERSONAS.find((candidate) => candidate.name === role);
 	if (persona === undefined) throw new Error(`unknown persona: ${role}`);
-	return `Answer one council question as the ${role}. Lens: ${persona.lens} Bias to correct for: ${persona.bias}\nQuestion: ${question}\nExplicit evidence:\n${context || "(none)"}\nReturn only JSON: {"recommendation":string,"evidence":string[],"assumptions":string[],"unknowns":string[],"nonNegotiableConflict"?:boolean,"materialUnverifiedAssumption"?:boolean}.`;
+	return `Answer one council question as the ${role}. Lens: ${persona.lens} Bias to correct for (an epistemic failure to compensate for, not a behavior to adopt): ${persona.bias}\nQuestion: ${question}\nExplicit evidence:\n${context || "(none)"}\nReturn only JSON: {"recommendation":string,"evidence":string[],"assumptions":string[],"unknowns":string[],"nonNegotiableConflict"?:boolean,"materialUnverifiedAssumption"?:boolean}.`;
 }
 
 function totalCost(results: CallResult<unknown>[]): number | undefined {
