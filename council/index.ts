@@ -3,7 +3,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { deriveContext, runCouncil } from "./council.ts";
 import { conversationText } from "./conversation.ts";
 import { formatCouncil } from "./report.ts";
-import { loadSettings, saveSettings } from "./settings.ts";
+import { loadSettings, resolveUserModel, saveSettings } from "./settings.ts";
 import { ROLES, type CouncilSettings } from "./types.ts";
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -31,7 +31,8 @@ async function configure(ctx: ExtensionCommandContext): Promise<void> {
 	const current = await loadSettings();
 	const roles = { ...current.roles };
 	for (const role of ROLES) {
-		const selected = await ctx.ui.input(`Enter ${role} OpenRouter model ID`, current.roles[role]);
+		const prefill = role === "user" ? ctx.model?.id ?? current.roles.user : current.roles[role];
+		const selected = await ctx.ui.input(`Enter ${role} OpenRouter model ID`, prefill);
 		if (!selected) return;
 		roles[role] = selected.trim();
 	}
@@ -79,7 +80,7 @@ async function council(pi: ExtensionAPI, args: string, ctx: ExtensionCommandCont
 	const question = args.trim() || (await ctx.ui.input("One council question:"))?.trim();
 	if (!question) return;
 	const conversation = conversationText(ctx.sessionManager.getEntries());
-	const settings = await loadSettings();
+	const settings = resolveUserModel(await loadSettings(), ctx.model?.id);
 	const models = [...ROLES.map((role) => `${role}: ${settings.roles[role]}`), `synthesis: ${settings.synthesis}`].join("\n");
 	if (!(await ctx.ui.confirm("Confirm OpenRouter council spend?", `${models}\n\nThe synthesis model will first receive up to 12,000 characters of this conversation to create a concise brief. A second critique round may run. OpenRouter credits will be charged.\n\nQuestion: ${question}`))) return;
 	const authResult = await ctx.modelRegistry.getProviderAuth("openrouter");
