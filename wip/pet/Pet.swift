@@ -102,7 +102,8 @@ FileHandle.standardInput.readabilityHandler = { handle in
     let input = String(data: handle.availableData, encoding: .utf8) ?? ""
     for command in input.split(whereSeparator: \.isNewline) { DispatchQueue.main.async {
         if command == "CLOSE" { app.terminate(nil) }
-        else if let next = PetView.State(rawValue: String(command)) { pet.transition(next) }
+        else if command == "HIDE" { window.orderOut(nil) }
+        else if let next = PetView.State(rawValue: String(command)) { pet.transition(next); window.orderFrontRegardless() }
     }}
 }
 app.run()
