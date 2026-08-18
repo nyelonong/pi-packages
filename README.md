@@ -29,6 +29,19 @@ The workflow skills cover the normal engineering loop:
 
 The package also includes skills for choosing the right Pi customization form and making Go calls to upstream services more resilient.
 
+### Release status
+
+Only extensions that meet the release bar ship with the package. Work in progress lives in `wip/` and is never included in an install.
+
+| Extension | Status | How to use it |
+| --- | --- | --- |
+| `ask-decision` | released | installed with the package |
+| `council` | released | installed with the package |
+| `personas` | released | installed with the package |
+| `pet` | in development (`wip/pet`) | not shipped; symlink `wip/pet` into `~/.pi/agent/extensions/pet` to try locally |
+
+An extension moves from `wip/` to the shipped list only after it passes review and its tests.
+
 ### Useful shortcuts
 
 - `/feature-journey <scenario>` explains a feature's flow, states, and participants from the code.
@@ -56,6 +69,8 @@ Before the first release, use a local checkout for development:
 ```sh
 pi install /absolute/path/to/pi-packages
 ```
+
+Extensions under `wip/` are experimental and are not installed by the package. To try one locally, link its directory into your extensions folder (for example `ln -s ~/Projects/personal/pi-packages/wip/pet ~/.pi/agent/extensions/pet`); remove the link when you are done.
 
 If Pi reports that an extension name already exists, remove or disable the older copy before loading this package.
 
